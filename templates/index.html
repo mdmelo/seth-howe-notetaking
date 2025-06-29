@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Care Notes - Customer Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .status-healthy { @apply bg-green-100 text-green-800 border-green-200; }
+        .status-unhealthy { @apply bg-red-100 text-red-800 border-red-200; }
+        .status-treated { @apply bg-blue-100 text-blue-800 border-blue-200; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Plant Care Notes</h1>
+            <p class="text-gray-600">Customer Management System for Plant Care Professionals</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+            <div class="border-b border-gray-200">
+                <nav class="flex space-x-8 px-6">
+                    <button onclick="showTab('customers')" id="customers-tab" 
+                            class="py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-blue-500 text-blue-600">
+                        Customers
+                    </button>
+                    <button onclick="showTab('notes')" id="notes-tab" 
+                            class="py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Plant Notes
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Customers Tab Content -->
+            <div id="customers-content" class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">Customer Management</h2>
+                    <button onclick="showAddCustomerForm()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                        Add New Customer
+                    </button>
+                </div>
+
+                <!-- Add Customer Form (Hidden by default) -->
+                <div id="add-customer-form" class="hidden bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Customer</h3>
+                    <form onsubmit="addCustomer(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                            <input type="text" id="customer-name" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <input type="email" id="customer-email" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                            <input type="tel" id="customer-phone" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                            <input type="text" id="customer-address" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="md:col-span-2 flex gap-3">
+                            <button type="submit" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Add Customer
+                            </button>
+                            <button type="button" onclick="hideAddCustomerForm()" 
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Customers List -->
+                <div id="customers-list" class="space-y-4">
+                    <!-- Customers will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Notes Tab Content -->
+            <div id="notes-content" class="p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">Plant Care Notes</h2>
+                    <button onclick="showAddNoteForm()" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                        Add New Note
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Customer</label>
+                            <select id="filter-customer" onchange="filterNotes()" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Customers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+                            <select id="filter-status" onchange="filterNotes()" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Statuses</option>
+                                <option value="healthy">Healthy</option>
+                                <option value="unhealthy">Unhealthy</option>
+                                <option value="treated">Treated</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="clearFilters()" 
+                                    class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Note Form (Hidden by default) -->
+                <div id="add-note-form" class="hidden bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Plant Note</h3>
+                    <form onsubmit="addNote(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
+                            <select id="note-customer" required 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Customer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Plant/Tree Name *</label>
+                            <input type="text" id="note-plant-name" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition *</label>
+                            <textarea id="note-condition" required rows="3" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Recommended Treatment *</label>
+                            <textarea id="note-treatment" required rows="3" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+                            <select id="note-status" required 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Status</option>
+                                <option value="healthy">Healthy</option>
+                                <option value="unhealthy">Unhealthy</option>
+                                <option value="treated">Treated</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2 flex gap-3">
+                            <button type="submit" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Add Note
+                            </button>
+                            <button type="button" onclick="hideAddNoteForm()" 
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Notes List -->
+                <div id="notes-list" class="space-y-4">
+                    <!-- Notes will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let customers = [];
+        let notes = [];
+        let currentTab = 'customers';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomers();
+            loadNotes();
+        });
+
+        // Tab management
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('[id$="-tab"]').forEach(tab => {
+                tab.classList.remove('border-blue-500', 'text-blue-600');
+                tab.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(tabName + '-tab').classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(tabName + '-tab').classList.add('border-blue-500', 'text-blue-600');
+
+            // Update content
+            document.querySelectorAll('[id$="-content"]').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(tabName + '-content').classList.remove('hidden');
+            currentTab = tabName;
+
+            // Load data if needed
+            if (tabName === 'customers') {
+                loadCustomers();
+            } else if (tabName === 'notes') {
+                loadNotes();
+                populateCustomerSelects();
+            }
+        }
+
+        // Loading state management
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        // Customer management
+        async function loadCustomers() {
+            try {
+                showLoading();
+                const response = await fetch('/api/customers');
+                customers = await response.json();
+                renderCustomers();
+            } catch (error) {
+                console.error('Error loading customers:', error);
+                alert('Error loading customers. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderCustomers() {
+            const container = document.getElementById('customers-list');
+            
+            if (customers.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <p class="text-lg mb-2">No customers found</p>
+                        <p>Add your first customer to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = customers.map(customer => `
+                <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200 fade-in">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">${customer.name}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                                ${customer.email ? `<div><span class="font-medium">Email:</span> ${customer.email}</div>` : ''}
+                                ${customer.phone ? `<div><span class="font-medium">Phone:</span> ${customer.phone}</div>` : ''}
+                                ${customer.address ? `<div><span class="font-medium">Address:</span> ${customer.address}</div>` : ''}
+                            </div>
+                            <div class="mt-3 text-xs text-gray-500">
+                                Added: ${new Date(customer.date_created).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2 ml-4">
+                            <button onclick="viewCustomerNotes('${customer.id}')" 
+                                    class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-sm font-medium transition-colors duration-200">
+                                View Notes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddCustomerForm() {
+            document.getElementById('add-customer-form').classList.remove('hidden');
+        }
+
+        function hideAddCustomerForm() {
+            document.getElementById('add-customer-form').classList.add('hidden');
+            document.getElementById('add-customer-form').querySelector('form').reset();
+        }
+
+        async function addCustomer(event) {
+            event.preventDefault();
+            
+            const customerData = {
+                name: document.getElementById('customer-name').value,
+                email: document.getElementById('customer-email').value || null,
+                phone: document.getElementById('customer-phone').value || null,
+                address: document.getElementById('customer-address').value || null
+            };
+
+            try {
+                showLoading();
+                const response = await fetch('/api/customers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(customerData)
+                });
+
+                if (response.ok) {
+                    hideAddCustomerForm();
+                    await loadCustomers();
+                    alert('Customer added successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error adding customer:', error);
+                alert('Error adding customer. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function viewCustomerNotes(customerId) {
+            showTab('notes');
+            document.getElementById('filter-customer').value = customerId;
+            filterNotes();
+        }
+
+        // Notes management
+        async function loadNotes() {
+            try {
+                showLoading();
+                const response = await fetch('/api/notes');
+                notes = await response.json();
+                renderNotes();
+            } catch (error) {
+                console.error('Error loading notes:', error);
+                alert('Error loading notes. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderNotes(notesToRender = notes) {
+            const container = document.getElementById('notes-list');
+            
+            if (notesToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <p class="text-lg mb-2">No notes found</p>
+                        <p>Add your first plant care note to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = notesToRender.map(note => `
+                <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200 fade-in">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900">${note.plant_name}</h3>
+                                <span class="px-3 py-1 rounded-full text-xs font-medium border status-${note.status}">
+                                    ${note.status.charAt(0).toUpperCase() + note.status.slice(1)}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-1">Customer: <span class="font-medium">${note.customer_name}</span></p>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${new Date(note.date_created).toLocaleDateString()}
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-1">Condition:</h4>
+                            <p class="text-sm text-gray-600">${note.condition}</p>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-1">Recommended Treatment:</h4>
+                            <p class="text-sm text-gray-600">${note.recommended_treatment}</p>
+                        </div>
+                    </div>
+                    
+                    ${note.date_updated !== note.date_created ? `
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <p class="text-xs text-gray-500">Last updated: ${new Date(note.date_updated).toLocaleDateString()}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function showAddNoteForm() {
+            document.getElementById('add-note-form').classList.remove('hidden');
+            populateCustomerSelects();
+        }
+
+        function hideAddNoteForm() {
+            document.getElementById('add-note-form').classList.add('hidden');
+            document.getElementById('add-note-form').querySelector('form').reset();
+        }
+
+        function populateCustomerSelects() {
+            const selects = ['note-customer', 'filter-customer'];
+            
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const currentValue = select.value;
+                
+                // Clear existing options (except the first one)
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+                
+                customers.forEach(customer => {
+                    const option = document.createElement('option');
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    select.appendChild(option);
+                });
+                
+                // Restore previous value if it still exists
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        async function addNote(event) {
+            event.preventDefault();
+            
+            const noteData = {
+                customer_id: document.getElementById('note-customer').value,
+                plant_name: document.getElementById('note-plant-name').value,
+                condition: document.getElementById('note-condition').value,
+                recommended_treatment: document.getElementById('note-treatment').value,
+                status: document.getElementById('note-status').value
+            };
+
+            try {
+                showLoading();
+                const response = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(noteData)
+                });
+
+                if (response.ok) {
+                    hideAddNoteForm();
+                    await loadNotes();
+                    alert('Note added successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error adding note:', error);
+                alert('Error adding note. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Filtering
+        async function filterNotes() {
+            const customerId = document.getElementById('filter-customer').value;
+            const status = document.getElementById('filter-status').value;
+            
+            let url = '/api/notes?';
+            const params = [];
+            
+            if (customerId) params.push(`customer_id=${customerId}`);
+            if (status) params.push(`status=${status}`);
+            
+            url += params.join('&');
+            
+            try {
+                showLoading();
+                const response = await fetch(url);
+                const filteredNotes = await response.json();
+                renderNotes(filteredNotes);
+            } catch (error) {
+                console.error('Error filtering notes:', error);
+                alert('Error filtering notes. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-customer').value = '';
+            document.getElementById('filter-status').value = '';
+            renderNotes(notes);
+        }
+    </script>
+</body>
+</html>
