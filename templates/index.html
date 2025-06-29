@@ -71,6 +71,7 @@
             transform: scale(1.05);
         }
         
+        /* Simple Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -79,29 +80,31 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.9);
+            background-color: rgba(0,0,0,0.5);
         }
         
         .modal-content {
-            margin: auto;
-            display: block;
-            max-width: 90%;
-            max-height: 90%;
-            margin-top: 2%;
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
         
-        .close {
-            position: absolute;
-            top: 15px;
-            right: 35px;
-            color: #f1f1f1;
-            font-size: 40px;
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
             font-weight: bold;
             cursor: pointer;
+            line-height: 1;
         }
         
-        .close:hover {
-            color: #bbb;
+        .close-btn:hover {
+            color: #000;
         }
 
         .note-actions {
@@ -112,47 +115,23 @@
             border-top: 1px solid #e5e7eb;
         }
 
-        .manage-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .manage-modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
         .existing-images {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 1rem;
-            margin-top: 1rem;
+            margin: 1rem 0;
         }
 
         .existing-image {
             position: relative;
-            display: inline-block;
         }
 
         .existing-image img {
             width: 100%;
             height: 150px;
             object-fit: cover;
-            border-radius: 0.375rem;
+            border-radius: 0.5rem;
             border: 2px solid #e5e7eb;
-            cursor: pointer;
         }
 
         .existing-image .delete-btn {
@@ -361,23 +340,20 @@
         </div>
     </div>
 
-    <!-- Image Modal -->
+    <!-- Simple Image Modal for Viewing -->
     <div id="imageModal" class="modal">
-        <span class="close" onclick="closeImageModal()">&times;</span>
-        <img class="modal-content" id="modalImage">
+        <div class="modal-content" style="max-width: 90%; text-align: center;">
+            <span class="close-btn" onclick="closeImageModal()">&times;</span>
+            <img id="modalImage" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+        </div>
     </div>
 
     <!-- Edit Note Modal -->
-    <div id="editNoteModal" class="manage-modal">
-        <div class="manage-modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Edit Note</h3>
-                <button onclick="closeEditNoteModal()" class="text-gray-500 hover:text-gray-700">
-                    <span class="text-2xl">&times;</span>
-                </button>
-            </div>
-            
-            <form onsubmit="updateNote(event)" class="grid grid-cols-1 gap-4">
+    <div id="editNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditNoteModal()">&times;</span>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Plant Note</h3>
+            <form id="edit-note-form" class="grid grid-cols-1 gap-4">
                 <input type="hidden" id="edit-note-id">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Plant/Tree Name *</label>
@@ -418,17 +394,12 @@
     </div>
 
     <!-- Image Management Modal -->
-    <div id="imageManagementModal" class="manage-modal">
-        <div class="manage-modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Manage Images</h3>
-                <button onclick="closeImageManagementModal()" class="text-gray-500 hover:text-gray-700">
-                    <span class="text-2xl">&times;</span>
-                </button>
-            </div>
-            
+    <div id="imageManagementModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeImageManagementModal()">&times;</span>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Manage Images</h3>
             <div id="image-management-content">
-                <!-- This will be populated by JavaScript -->
+                <!-- Content populated by JavaScript -->
             </div>
         </div>
     </div>
@@ -443,6 +414,7 @@
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('App initializing...');
             loadCustomers();
             loadNotes();
         });
@@ -484,7 +456,7 @@
             document.getElementById('loading').classList.add('hidden');
         }
 
-        // Image handling
+        // Image handling for new notes
         function previewImages(input) {
             const container = document.getElementById('image-preview-container');
             container.innerHTML = '';
@@ -520,6 +492,7 @@
             previewImages(input);
         }
 
+        // Simple image viewing modal
         function openImageModal(src) {
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById('modalImage');
@@ -531,58 +504,118 @@
             document.getElementById('imageModal').style.display = 'none';
         }
 
-        // FIXED: Image Management Modal - Completely rewritten
-        function openImageManagementModal(noteId) {
-            console.log('Opening image management for note:', noteId);
-            
-            currentNoteForImages = noteId;
-            const modal = document.getElementById('imageManagementModal');
-            const content = document.getElementById('image-management-content');
-            
-            // Find the note
+        // Edit Note Modal Functions
+        function openEditNoteModal(noteId) {
+            console.log('Opening edit modal for note:', noteId);
             const note = notes.find(n => n.id === noteId);
             if (!note) {
                 console.error('Note not found:', noteId);
-                alert('Note not found');
                 return;
             }
+
+            // Populate form
+            document.getElementById('edit-note-id').value = note.id;
+            document.getElementById('edit-plant-name').value = note.plant_name;
+            document.getElementById('edit-condition').value = note.condition;
+            document.getElementById('edit-treatment').value = note.recommended_treatment;
+            document.getElementById('edit-status').value = note.status;
+
+            // Show modal
+            document.getElementById('editNoteModal').style.display = 'block';
+        }
+
+        function closeEditNoteModal() {
+            document.getElementById('editNoteModal').style.display = 'none';
+        }
+
+        // Handle edit note form submission
+        document.getElementById('edit-note-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
+            const noteId = document.getElementById('edit-note-id').value;
+            const updateData = {
+                plant_name: document.getElementById('edit-plant-name').value,
+                condition: document.getElementById('edit-condition').value,
+                recommended_treatment: document.getElementById('edit-treatment').value,
+                status: document.getElementById('edit-status').value
+            };
+
+            try {
+                showLoading();
+                const response = await fetch(`/api/notes/${noteId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    closeEditNoteModal();
+                    await loadNotes();
+                    alert('Note updated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error updating note:', error);
+                alert('Error updating note. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        // Image Management Modal Functions
+        function openImageManagementModal(noteId) {
+            console.log('Opening image management for note:', noteId);
+            currentNoteForImages = noteId;
+            
+            const note = notes.find(n => n.id === noteId);
+            if (!note) {
+                console.error('Note not found:', noteId);
+                alert('Note not found!');
+                return;
+            }
+
             console.log('Found note:', note);
+            console.log('Note images:', note.images);
+
+            const content = document.getElementById('image-management-content');
             
-            // Build the content HTML
             let imagesHtml = '';
             if (note.images && note.images.length > 0) {
-                imagesHtml = note.images.map(image => `
-                    <div class="existing-image">
-                        <img src="${image.url}" alt="${image.original_filename}" 
-                             onclick="openImageModal('${image.url}')" 
-                             title="${image.original_filename}">
-                        <div class="delete-btn" onclick="deleteNoteImage('${noteId}', '${image.id}')">&times;</div>
+                imagesHtml = `
+                    <div class="existing-images">
+                        ${note.images.map(image => `
+                            <div class="existing-image">
+                                <img src="${image.url}" alt="${image.original_filename}" 
+                                     onclick="openImageModal('${image.url}')" 
+                                     title="${image.original_filename}">
+                                <div class="delete-btn" onclick="deleteNoteImage('${noteId}', '${image.id}')">&times;</div>
+                            </div>
+                        `).join('')}
                     </div>
-                `).join('');
+                `;
             } else {
-                imagesHtml = '<p class="text-gray-500 text-sm col-span-full">No images uploaded yet</p>';
+                imagesHtml = '<p class="text-gray-500 text-sm mb-4">No images uploaded yet</p>';
             }
             
             content.innerHTML = `
                 <div class="mb-4">
                     <h4 class="font-medium text-gray-900 mb-2">Plant: ${note.plant_name}</h4>
-                    <p class="text-sm text-gray-600">Customer: ${note.customer_name}</p>
+                    <p class="text-sm text-gray-600 mb-4">Customer: ${note.customer_name}</p>
                 </div>
                 
                 <div class="mb-6">
                     <h5 class="font-medium text-gray-700 mb-3">Current Images (${note.images ? note.images.length : 0})</h5>
-                    <div class="existing-images">
-                        ${imagesHtml}
-                    </div>
+                    ${imagesHtml}
                 </div>
                 
                 <div class="border-t pt-4">
                     <h5 class="font-medium text-gray-700 mb-3">Add New Images</h5>
                     <input type="file" id="additional-images" multiple accept="image/*" 
-                           onchange="previewAdditionalImages(this)"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3">
-                    <div id="additional-image-preview" class="mb-3"></div>
                     <button onclick="uploadAdditionalImages('${noteId}')" 
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
                         Upload Images
@@ -590,47 +623,12 @@
                 </div>
             `;
             
-            console.log('Content set, showing modal');
-            modal.style.display = 'block';
+            document.getElementById('imageManagementModal').style.display = 'block';
         }
 
         function closeImageManagementModal() {
             document.getElementById('imageManagementModal').style.display = 'none';
             currentNoteForImages = null;
-        }
-
-        function previewAdditionalImages(input) {
-            const container = document.getElementById('additional-image-preview');
-            container.innerHTML = '';
-            const files = Array.from(input.files);
-
-            files.forEach((file, index) => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const preview = document.createElement('div');
-                        preview.className = 'image-preview';
-                        preview.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
-                            <div class="remove-btn" onclick="removeAdditionalImage(${index})">&times;</div>
-                        `;
-                        container.appendChild(preview);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-
-        function removeAdditionalImage(index) {
-            const input = document.getElementById('additional-images');
-            const files = Array.from(input.files);
-            files.splice(index, 1);
-            
-            const dt = new DataTransfer();
-            files.forEach(file => dt.items.add(file));
-            input.files = dt.files;
-            
-            previewAdditionalImages(input);
         }
 
         async function uploadAdditionalImages(noteId) {
@@ -707,66 +705,9 @@
             }
         }
 
-        // Edit Note Modal Functions
-        function openEditNoteModal(noteId) {
-            const note = notes.find(n => n.id === noteId);
-            if (!note) {
-                alert('Note not found');
-                return;
-            }
-            
-            document.getElementById('edit-note-id').value = note.id;
-            document.getElementById('edit-plant-name').value = note.plant_name;
-            document.getElementById('edit-condition').value = note.condition;
-            document.getElementById('edit-treatment').value = note.recommended_treatment;
-            document.getElementById('edit-status').value = note.status;
-            
-            document.getElementById('editNoteModal').style.display = 'block';
-        }
-
-        function closeEditNoteModal() {
-            document.getElementById('editNoteModal').style.display = 'none';
-        }
-
-        async function updateNote(event) {
-            event.preventDefault();
-            
-            const noteId = document.getElementById('edit-note-id').value;
-            const noteData = {
-                plant_name: document.getElementById('edit-plant-name').value,
-                condition: document.getElementById('edit-condition').value,
-                recommended_treatment: document.getElementById('edit-treatment').value,
-                status: document.getElementById('edit-status').value
-            };
-
-            try {
-                showLoading();
-                const response = await fetch(`/api/notes/${noteId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(noteData)
-                });
-
-                if (response.ok) {
-                    closeEditNoteModal();
-                    await loadNotes();
-                    alert('Note updated successfully!');
-                } else {
-                    const error = await response.json();
-                    alert('Error: ' + error.error);
-                }
-            } catch (error) {
-                console.error('Error updating note:', error);
-                alert('Error updating note. Please try again.');
-            } finally {
-                hideLoading();
-            }
-        }
-
+        // Delete Note Function
         async function deleteNote(noteId) {
-            if (!confirm('Are you sure you want to delete this note? This will also delete all associated images.')) {
+            if (!confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
                 return;
             }
             
@@ -775,7 +716,7 @@
                 const response = await fetch(`/api/notes/${noteId}`, {
                     method: 'DELETE'
                 });
-
+                
                 if (response.ok) {
                     await loadNotes();
                     alert('Note deleted successfully!');
@@ -791,20 +732,20 @@
             }
         }
 
-        // Close modal when clicking outside
+        // Close modals when clicking outside
         window.onclick = function(event) {
             const imageModal = document.getElementById('imageModal');
-            const managementModal = document.getElementById('imageManagementModal');
             const editModal = document.getElementById('editNoteModal');
+            const managementModal = document.getElementById('imageManagementModal');
             
             if (event.target === imageModal) {
                 imageModal.style.display = 'none';
             }
-            if (event.target === managementModal) {
-                managementModal.style.display = 'none';
-            }
             if (event.target === editModal) {
                 editModal.style.display = 'none';
+            }
+            if (event.target === managementModal) {
+                managementModal.style.display = 'none';
             }
         }
 
@@ -1117,7 +1058,7 @@
             }
         }
 
-        // Filtering function
+        // Filtering
         async function filterNotes() {
             const customerId = document.getElementById('filter-customer').value;
             const status = document.getElementById('filter-status').value;
