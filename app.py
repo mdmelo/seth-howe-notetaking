@@ -1,9 +1,18 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 import sqlite3
 import uuid
 from datetime import datetime
 import os
 import argparse
+from io import BytesIO
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus.frames import Frame
+from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 app = Flask(__name__)
 
@@ -295,6 +304,189 @@ def customer_notes(customer_id):
         'customer_name': customer['name'],
         'notes': [dict(note) for note in notes]
     })
+
+@app.route('/api/customers/<customer_id>/report')
+def generate_customer_report(customer_id):
+    """Generate PDF report for a specific customer"""
+    try:
+        conn = get_db_connection()
+        
+        # Get customer information
+        customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
+        if not customer:
+            conn.close()
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        # Get all notes for the customer
+        notes = conn.execute('''
+            SELECT * FROM plant_notes 
+            WHERE customer_id = ? 
+            ORDER BY date_created DESC
+        ''', (customer_id,)).fetchall()
+        
+        conn.close()
+        
+        # Generate PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, 
+                              topMargin=72, bottomMargin=18)
+        
+        # Container for the 'Flowable' objects
+        elements = []
+        
+        # Define styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor('#2563eb')
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            spaceAfter=12,
+            spaceBefore=20,
+            textColor=colors.HexColor('#1f2937')
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=11,
+            spaceAfter=6,
+            textColor=colors.HexColor('#374151')
+        )
+        
+        # Title
+        title = Paragraph("Plant Care Report", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 20))
+        
+        # Customer Information
+        customer_heading = Paragraph("Customer Information", heading_style)
+        elements.append(customer_heading)
+        
+        customer_data = [
+            ['Name:', customer['name']],
+            ['Email:', customer['email'] or 'Not provided'],
+            ['Phone:', customer['phone'] or 'Not provided'],
+            ['Address:', customer['address'] or 'Not provided'],
+            ['Customer Since:', datetime.fromisoformat(customer['date_created']).strftime('%B %d, %Y')]
+        ]
+        
+        customer_table = Table(customer_data, colWidths=[1.5*inch, 4*inch])
+        customer_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        
+        elements.append(customer_table)
+        elements.append(Spacer(1, 30))
+        
+        # Plant Care Notes
+        notes_heading = Paragraph("Plant Care Notes", heading_style)
+        elements.append(notes_heading)
+        
+        if not notes:
+            no_notes = Paragraph("No plant care notes found for this customer.", normal_style)
+            elements.append(no_notes)
+        else:
+            # Summary statistics
+            total_notes = len(notes)
+            healthy_count = sum(1 for note in notes if note['status'] == 'healthy')
+            unhealthy_count = sum(1 for note in notes if note['status'] == 'unhealthy')
+            treated_count = sum(1 for note in notes if note['status'] == 'treated')
+            
+            summary_text = f"Total Plants: {total_notes} | Healthy: {healthy_count} | Unhealthy: {unhealthy_count} | Treated: {treated_count}"
+            summary = Paragraph(summary_text, normal_style)
+            elements.append(summary)
+            elements.append(Spacer(1, 20))
+            
+            # Individual notes
+            for i, note in enumerate(notes):
+                # Note header
+                note_title = f"{note['plant_name']} - {note['status'].title()}"
+                note_heading = Paragraph(f"<b>{note_title}</b>", normal_style)
+                elements.append(note_heading)
+                
+                # Note details
+                note_data = [
+                    ['Date:', datetime.fromisoformat(note['date_created']).strftime('%B %d, %Y')],
+                    ['Status:', note['status'].title()],
+                    ['Condition:', note['condition']],
+                    ['Treatment:', note['recommended_treatment']]
+                ]
+                
+                if note['date_updated'] != note['date_created']:
+                    note_data.append(['Last Updated:', datetime.fromisoformat(note['date_updated']).strftime('%B %d, %Y')])
+                
+                note_table = Table(note_data, colWidths=[1.2*inch, 4.3*inch])
+                
+                # Status-based coloring
+                status_color = colors.HexColor('#10b981') if note['status'] == 'healthy' else \
+                              colors.HexColor('#ef4444') if note['status'] == 'unhealthy' else \
+                              colors.HexColor('#3b82f6')
+                
+                note_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                    ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('BACKGROUND', (0, 1), (0, 1), status_color),
+                    ('TEXTCOLOR', (0, 1), (0, 1), colors.white),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ]))
+                
+                elements.append(note_table)
+                
+                # Add space between notes
+                if i < len(notes) - 1:
+                    elements.append(Spacer(1, 20))
+        
+        # Footer
+        elements.append(Spacer(1, 30))
+        footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+        footer = Paragraph(footer_text, ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=9,
+            alignment=TA_CENTER,
+            textColor=colors.grey
+        ))
+        elements.append(footer)
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get PDF data
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        # Create response
+        response = send_file(
+            BytesIO(pdf_data),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"plant_care_report_{customer['name'].replace(' ', '_')}.pdf"
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error generating PDF report: {str(e)}")
+        return jsonify({'error': 'Failed to generate report'}), 500
 
 @app.errorhandler(404)
 def not_found(error):
