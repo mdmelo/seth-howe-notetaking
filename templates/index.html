@@ -494,9 +494,11 @@
 
         // Simple image viewing modal
         function openImageModal(src) {
+            console.log("openImageModal called with src:", src);
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById('modalImage');
             modal.style.display = 'block';
+            // modalImg.src = decodeURIComponent(src);
             modalImg.src = src;
         }
 
@@ -567,31 +569,31 @@
         });
 
         // Image Management Modal Functions
+        //   In this function, around line 570, the `content.innerHTML` assignment injects the generated HTML
+        //   into the element with id `image-management-content`. This element is inside the modal dialog with
+        //   id `imageManagementModal`. That modal initially has `display: none` and possibly the `hidden` class
+        //   applied, which can cause issues if you insert content before removing `hidden` / showing the modal.
+        //   So effectively the HTML is inserted into `<div id="image-management-content">` in the modal
+        //   structure. Let me know if you'd like me to point this out in the code or add comments there.
         function openImageManagementModal(noteId) {
-            console.log('Opening image management for note:', noteId);
             currentNoteForImages = noteId;
-            
             const note = notes.find(n => n.id === noteId);
-            if (!note) {
-                console.error('Note not found:', noteId);
-                alert('Note not found!');
-                return;
-            }
-
-            console.log('Found note:', note);
-            console.log('Note images:', note.images);
+            if (!note) return;
 
             const content = document.getElementById('image-management-content');
-            
+            const modal = document.getElementById('imageManagementModal');
+            // debug
+            modal.classList.remove('hidden');
+            modal.style.display = 'block';
+            console.trace("added JS to remove hidden attribute from class...")
+
             let imagesHtml = '';
             if (note.images && note.images.length > 0) {
                 imagesHtml = `
                     <div class="existing-images">
                         ${note.images.map(image => `
                             <div class="existing-image">
-                                <img src="${image.url}" alt="${image.original_filename}" 
-                                     onclick="openImageModal('${image.url}')" 
-                                     title="${image.original_filename}">
+                                <img src="${image.url}" alt="${image.original_filename}" onclick="openImageModal('${image.url}')" title="${image.original_filename}">
                                 <div class="delete-btn" onclick="deleteNoteImage('${noteId}', '${image.id}')">&times;</div>
                             </div>
                         `).join('')}
@@ -600,29 +602,33 @@
             } else {
                 imagesHtml = '<p class="text-gray-500 text-sm mb-4">No images uploaded yet</p>';
             }
-            
+
+            // debug
+            console.log('GPT: content element:', content);
+            console.log('GPT: note object:', note);
+            console.log('GPT: generated HTML:', imagesHtml);
+
             content.innerHTML = `
                 <div class="mb-4">
                     <h4 class="font-medium text-gray-900 mb-2">Plant: ${note.plant_name}</h4>
                     <p class="text-sm text-gray-600 mb-4">Customer: ${note.customer_name}</p>
                 </div>
-                
                 <div class="mb-6">
                     <h5 class="font-medium text-gray-700 mb-3">Current Images (${note.images ? note.images.length : 0})</h5>
                     ${imagesHtml}
                 </div>
-                
                 <div class="border-t pt-4">
                     <h5 class="font-medium text-gray-700 mb-3">Add New Images</h5>
-                    <input type="file" id="additional-images" multiple accept="image/*" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3">
-                    <button onclick="uploadAdditionalImages('${noteId}')" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                        Upload Images
-                    </button>
+                    <input type="file" id="additional-images" multiple accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3">
+                    <button onclick="uploadAdditionalImages('${noteId}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">Upload Images</button>
                 </div>
             `;
-            
+
+            // Force reflow to ensure DOM updates before showing modal
+            content.offsetHeight;
+            content.classList.remove('hidden');
+
+            // Show modal AFTER content is ready
             document.getElementById('imageManagementModal').style.display = 'block';
         }
 
